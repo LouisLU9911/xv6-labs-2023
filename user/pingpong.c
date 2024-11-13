@@ -5,31 +5,38 @@
 int
 main(int argc, char *argv[])
 {
-  int pP2C[2];
-  int pC2P[2];
-  pipe(pP2C);
-  pipe(pC2P);
+    // [read, write]
+    int p[2];
+    pipe(p);
 
-  if (fork() == 0) {
-    char cBuf[1];
-    close(pP2C[1]);
-    read(pP2C[0], cBuf, 1);
-    close(pP2C[0]);
-    int cPid = getpid();
-    fprintf(1, "%d: received ping\n", cPid);
-    close(pC2P[0]);
-    write(pC2P[1], cBuf, 1);
-    close(pC2P[1]);
-  } else {
-    char pBuf[1];
-    close(pP2C[0]);
-    write(pP2C[1], "\n", 1);
-    close(pP2C[1]);
-    close(pC2P[1]);
-    read(pC2P[0], pBuf, 1);
-    close(pC2P[0]);
-    int pPid = getpid();
-    fprintf(1, "%d: received pong\n", pPid);
+    if (fork() == 0) {
+        // child
+        char cBuf[1];
+
+        // read from parent
+        read(p[0], cBuf, 1);
+        close(p[0]);
+
+        int cPID = getpid();
+        fprintf(1, "%d: received ping\n", cPID);
+
+        // send back to parent
+        write(p[1], cBuf, 1);
+        close(p[1]);
+    } else {
+        // parent
+        char pBuf[1];
+
+        // send to child
+        write(p[1], pBuf, 1);
+        close(p[1]);
+
+        // read from child
+        read(p[0], pBuf, 1);
+        close(p[0]);
+
+        int pPID = getpid();
+        fprintf(1, "%d: received pong\n", pPID);
   }
   exit(0);
 }

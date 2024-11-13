@@ -2,49 +2,56 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-void
-primePipe(int leftFd) {
-  int prime = 0;
-  if (read(leftFd, &prime, sizeof(prime)) == 0) {
-    close(leftFd);
+void sieve(int from) {
+  // MUST close from and wait from child before return
+  // exit after return
+  int prime;
+  if (read(from, &prime, sizeof(prime)) == 0) {
+    close(from);
     return;
   }
-  fprintf(1, "prime %d\n", prime);
 
+  fprintf(1, "prime %d\n", prime);
   int p[2];
   pipe(p);
+  int r = p[0], w = p[1];
+
   if (fork() == 0) {
-    close(p[1]);
-    primePipe(p[0]);
+    close(w);
+    sieve(r);
     exit(0);
   }
-  close(p[0]);
-  int n;
-  while (read(leftFd, &n, sizeof(n)) != 0) {
-    if (n % prime != 0) {
-      write(p[1], &n, sizeof(n));
+
+  close(r);
+  int next;
+  while (read(from, &next, sizeof(next)) != 0) {
+    // read from the previous pipe
+    if (next % prime != 0) {
+      // write to the next pipe
+      write(w, &next, sizeof(next));
     }
   }
-  close(leftFd);
-  close(p[1]);
+  close(from);
+  close(w);
   wait(0);
 }
 
-int
-main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  // [read, write]
   int p[2];
   pipe(p);
+  int r = p[0], w = p[1];
+
   if (fork() == 0) {
-    close(p[1]);
-    primePipe(p[0]);
+    close(w);
+    sieve(r);
     exit(0);
   }
-  close(p[0]);
+  close(r);
   for (int i = 2; i <= 35; i++) {
-      write(p[1], &i, sizeof(i));
+    write(w, &i, sizeof(i));
   }
-  close(p[1]);
+  close(w);
   wait(0);
   exit(0);
 }
