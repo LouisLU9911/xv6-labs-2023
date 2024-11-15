@@ -1,0 +1,8 @@
+1. usertrap() at kernel/trap.c:67 calls syscall().
+2. p->trapframe->a7: 0x7. It means SYS_exec is called.
+3. The previous mode of CPU is the user mode.
+4. 00002683          	lw	a3,0(zero) # 0 <_entry-0x80000000>
+   a3 corresponds to the variable num.
+5. Address 0 isn't mapped in the kernel address space.
+   scause 0xd (13) means the exception is Load page fault.
+6. p->name = initcode\000\000\000\000\000\000\000 p->pid = 1

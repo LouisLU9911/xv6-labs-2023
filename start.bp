@@ -1,0 +1,5 @@
+break _entry
+break start
+break main
+break userinit
+break syscall
