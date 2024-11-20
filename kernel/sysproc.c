@@ -74,7 +74,41 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  struct proc *p = myproc();
+  // vmprint(p->pagetable);
+  // virtual address to the buffer
+  uint64 va;
+  argaddr(0, &va);
+  // printf("va:\t%p\n", va);
+
+  // the number of pages
+  int npages;
+  argint(1, &npages);
+  int upper_limit = 64;
+  npages = npages > upper_limit? upper_limit: npages;
+
+  // printf("npages:\t%d\n", npages);
+  // pointer to bitmask
+  uint64 vamask;
+  argaddr(2, &vamask);
+  // printf("vamask:\t%p\n", vamask);
+
+  uint64 pamask = 0;
+  int len = 8;
+
+  for (int i = 0; i < npages; i++) {
+    uint64 addr = va + i * PGSIZE;
+    pte_t * pte = walk(p->pagetable, addr, 0);
+    uint64 accessed = ((*pte) & PTE_A) >> 6;
+    *pte &= (~PTE_A);
+    pamask = pamask | (accessed << i);
+    // printf("va %p pte %p PTE_A %d\n", addr, *pte, accessed);
+  }
+  // vmprint(p->pagetable);
+
+  if (copyout(p->pagetable, vamask, (char *)&pamask, len) == 0) {
+    return 0;
+  }
   return 0;
 }
 #endif

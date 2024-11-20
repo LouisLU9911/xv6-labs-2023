@@ -29,6 +29,7 @@ vmprint_helper(pagetable_t pgtbl, int level) {
         printf(" ..");
       }
       printf("%d: pte %p pa %p\n", i, pte, child);
+      // printf("%d: pte %p pa %p pte_a %d\n", i, pte, child, pte & PTE_A);
       if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
         vmprint_helper((pagetable_t)child, level + 1);
       }
