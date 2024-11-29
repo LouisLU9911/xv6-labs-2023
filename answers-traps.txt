@@ -1,0 +1,13 @@
+1. Registers containing the arguments:
+- a0
+- a1
+- a2 (13)
+2. Call to f and g:
+li  a1,12
+inline function f(8)+1=g(8)+1=8+3+1=12
+3. hex((1<<12) + 0 + 0x28) = 0x17f0
+4. 0x38: PC(0x34)'s next instruction
+5. output: He110 World
+If RISC-V is a big-endian machine, we need to use i: 0x726c6400. And we don't need to change the 57616 since the gcc will store it correctly for us.
+6. y=? will print the a2's value when the printf is called. Because printf will store all registers (a1-a7) to the stacks and print them if the format str(a0) uses them.
+
