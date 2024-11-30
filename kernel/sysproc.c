@@ -92,3 +92,22 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_sigalarm(void)
+{
+  int nticks;
+  argint(0, &nticks);
+  printf("nticks: %d\n", nticks);
+  myproc()->nticks = nticks;
+  uint64 va;
+  argaddr(1, &va);
+  myproc()->handler = va;
+  return nticks;
+}
+
+uint64
+sys_sigreturn(void)
+{
+  return 0;
+}
