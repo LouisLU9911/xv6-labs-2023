@@ -98,7 +98,7 @@ sys_sigalarm(void)
 {
   int nticks;
   argint(0, &nticks);
-  printf("nticks: %d\n", nticks);
+  // printf("nticks: %d\n", nticks);
   myproc()->nticks = nticks;
   uint64 va;
   argaddr(1, &va);
@@ -109,5 +109,58 @@ sys_sigalarm(void)
 uint64
 sys_sigreturn(void)
 {
-  return 0;
+  struct proc* p = myproc();
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_sp = p->prevtrapframe->kernel_sp;
+  p->trapframe->kernel_trap = p->prevtrapframe->kernel_trap;
+  p->trapframe->epc = p->prevtrapframe->epc;
+  p->trapframe->kernel_hartid = p->prevtrapframe->kernel_hartid;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->kernel_satp = p->prevtrapframe->kernel_satp;
+  p->trapframe->ra = p->prevtrapframe->ra;
+  p->trapframe->sp = p->prevtrapframe->sp;
+  p->trapframe->gp = p->prevtrapframe->gp;
+  p->trapframe->tp = p->prevtrapframe->tp;
+  p->trapframe->t0 = p->prevtrapframe->t0;
+  p->trapframe->t1 = p->prevtrapframe->t1;
+  p->trapframe->t2 = p->prevtrapframe->t2;
+  p->trapframe->s0 = p->prevtrapframe->s0;
+  p->trapframe->s1 = p->prevtrapframe->s1;
+  p->trapframe->a0 = p->prevtrapframe->a0;
+  p->trapframe->a1 = p->prevtrapframe->a1;
+  p->trapframe->a2 = p->prevtrapframe->a2;
+  p->trapframe->a3 = p->prevtrapframe->a3;
+  p->trapframe->a4 = p->prevtrapframe->a4;
+  p->trapframe->a5 = p->prevtrapframe->a5;
+  p->trapframe->a6 = p->prevtrapframe->a6;
+  p->trapframe->a7 = p->prevtrapframe->a7;
+  p->trapframe->s2 = p->prevtrapframe->s2;
+  p->trapframe->s3 = p->prevtrapframe->s3;
+  p->trapframe->s4 = p->prevtrapframe->s4;
+  p->trapframe->s5 = p->prevtrapframe->s5;
+  p->trapframe->s6 = p->prevtrapframe->s6;
+  p->trapframe->s7 = p->prevtrapframe->s7;
+  p->trapframe->s8 = p->prevtrapframe->s8;
+  p->trapframe->s9 = p->prevtrapframe->s9;
+  p->trapframe->s10 = p->prevtrapframe->s10;
+  p->trapframe->s11 = p->prevtrapframe->s11;
+  p->trapframe->t3 = p->prevtrapframe->t3;
+  p->trapframe->t4 = p->prevtrapframe->t4;
+  p->trapframe->t5 = p->prevtrapframe->t5;
+  p->trapframe->t6 = p->prevtrapframe->t6;
+
+  p->tickspassed = 0;
+  return p->trapframe->a0;
 }

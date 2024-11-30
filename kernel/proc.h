@@ -109,4 +109,5 @@ struct proc {
   int nticks;
   uint64 handler;
   int tickspassed;
+  struct trapframe *prevtrapframe; // previous trapframe
 };
