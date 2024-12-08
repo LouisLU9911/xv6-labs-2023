@@ -15,6 +15,8 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+extern int refcount[RCNTSIZE]; // page ref count
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -315,7 +317,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -324,18 +325,23 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+
+    int idx = (pa - KERNBASE) / PGSIZE;
+    refcount[idx]++;
+
+    if (flags & PTE_W) {
+      flags |= PTE_COW;
+    }
+    flags = (flags | PTE_R) & (~PTE_W);
+    *pte = (*pte & (~0x3FF)) | flags;
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+      kfree((char *)pa);
       goto err;
     }
   }
   return 0;
 
  err:
-  uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
 }
 
@@ -360,6 +366,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
   pte_t *pte;
+  uint flags0;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
@@ -367,9 +374,25 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
       return -1;
     pte = walk(pagetable, va0, 0);
     if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 ||
-       (*pte & PTE_W) == 0)
+       (*pte & (PTE_W | PTE_COW)) == 0)
       return -1;
     pa0 = PTE2PA(*pte);
+    flags0 = PTE_FLAGS(*pte);
+    if (flags0 & PTE_COW) {
+      char *mem;
+      if((mem = kalloc()) == 0) {
+        return -1;
+      } else {
+        memmove(mem, (char*)pa0, PGSIZE);
+        flags0 = (flags0 & (~PTE_COW)) | PTE_W;
+        uvmunmap(pagetable, va0, 1, 1);
+        if(mappages(pagetable, va0, PGSIZE, (uint64)mem, flags0) != 0){
+          kfree(mem);
+          return -1;
+        }
+        pa0 = (uint64)mem;
+      }
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
