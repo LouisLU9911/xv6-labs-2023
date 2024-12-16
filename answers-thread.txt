@@ -1,0 +1,4 @@
+1. Without locks, the put and insert are not atomic, which will break the invariant of the hash table .
+The possible event sequence which will lead to a key being missing is:
+thread1: e->next = n => thread2: e->next = n => thread1: *p = e => thread2: *p = e
+In the above order, a new entry added by thread1 will be overwritten by a new entry added by thread2.
