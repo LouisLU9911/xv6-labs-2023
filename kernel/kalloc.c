@@ -14,19 +14,28 @@ void freerange(void *pa_start, void *pa_end);
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+#define LOCKNAMEBUFSZ 6
+char lockname[NCPU][LOCKNAMEBUFSZ];
+
 struct run {
   struct run *next;
 };
 
 struct {
-  struct spinlock lock;
-  struct run *freelist;
+  struct spinlock locks[NCPU];
+  struct run *freelists[NCPU];
+  struct spinlock oplk;
 } kmem;
 
 void
 kinit()
 {
-  initlock(&kmem.lock, "kmem");
+  for (int i = 0; i < NCPU; i++) {
+    snprintf(lockname[i], LOCKNAMEBUFSZ, "kmem%d", i);
+    initlock(&kmem.locks[i], lockname[i]);
+    kmem.freelists[i] = 0;
+  }
+  initlock(&kmem.oplk, "kmem");
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -56,10 +65,13 @@ kfree(void *pa)
 
   r = (struct run*)pa;
 
-  acquire(&kmem.lock);
-  r->next = kmem.freelist;
-  kmem.freelist = r;
-  release(&kmem.lock);
+  push_off();
+  int hart = cpuid();
+  acquire(&kmem.locks[hart]);
+  r->next = kmem.freelists[hart];
+  kmem.freelists[hart] = r;
+  release(&kmem.locks[hart]);
+  pop_off();
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -70,13 +82,55 @@ kalloc(void)
 {
   struct run *r;
 
-  acquire(&kmem.lock);
-  r = kmem.freelist;
+  push_off();
+  int hart = cpuid();
+  acquire(&kmem.locks[hart]);
+  r = kmem.freelists[hart];
   if(r)
-    kmem.freelist = r->next;
-  release(&kmem.lock);
+    kmem.freelists[hart] = r->next;
+  release(&kmem.locks[hart]);
+  if(r)
+    goto rfound;
 
-  if(r)
-    memset((char*)r, 5, PGSIZE); // fill with junk
+  // try to steal mem from other harts
+  acquire(&kmem.oplk);
+  int idx = 0;
+  while (idx < NCPU) {
+    acquire(&kmem.locks[idx]);
+    if (kmem.freelists[idx]) {
+      break;
+    }
+    release(&kmem.locks[idx]);
+    idx++;
+  }
+  if(idx == NCPU) {
+    release(&kmem.oplk);
+    goto rnotfound;
+  }
+  acquire(&kmem.locks[hart]);
+
+  // idx -> hart 
+  struct run *fast, *slow;
+  fast = slow = kmem.freelists[idx];
+  while (fast) {
+    fast = fast->next;
+    if (fast) {
+      fast = fast->next;
+      slow = slow->next;
+    }
+  }
+  kmem.freelists[hart] = kmem.freelists[idx];
+  kmem.freelists[idx] = slow->next;
+  slow->next = 0;
+  release(&kmem.locks[idx]);
+  r = kmem.freelists[hart];
+  kmem.freelists[hart] = r->next;
+  release(&kmem.locks[hart]);
+  release(&kmem.oplk);
+
+rfound:
+  memset((char*)r, 5, PGSIZE); // fill with junk
+rnotfound:
+  pop_off();
   return (void*)r;
 }
