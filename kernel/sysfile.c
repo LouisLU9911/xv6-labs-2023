@@ -307,7 +307,7 @@ sys_open(void)
   char path[MAXPATH];
   int fd, omode;
   struct file *f;
-  struct inode *ip;
+  struct inode *ip, *next;
   int n;
 
   argint(1, &omode);
@@ -339,6 +339,31 @@ sys_open(void)
     iunlockput(ip);
     end_op();
     return -1;
+  }
+
+  if(ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)){
+    int depth = 0;
+    char name[MAXPATH];
+    while(depth < 10 && ip->type == T_SYMLINK){
+      // read from inode and get next
+      readi(ip, 0, (uint64)name, 0, MAXPATH);
+      if((next = namei(name)) == 0){
+        // printf("next not found: %s\n", name);
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+      // update ip
+      iunlockput(ip);
+      ip = next;
+      ilock(ip);
+      depth++;
+    }
+    if(depth == 10 || ip->type != T_FILE){
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -501,5 +526,34 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64
+sys_symlink(void)
+{
+  // int symlink(char* target, char* path)
+  struct inode *ip;
+  char target[MAXPATH], path[MAXPATH];
+
+  int len_t = argstr(0, target, MAXPATH);
+  int len_p = argstr(1, path, MAXPATH);
+  if(len_t < 0 || len_p < 0)
+    return -1;
+
+  begin_op();
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0){
+    end_op();
+    return -1;
+  }
+  if(writei(ip, 0, (uint64)target, 0, len_t) < len_t){
+    ip->nlink = 0;
+    iupdate(ip);
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+  iunlockput(ip);
+  end_op();
   return 0;
 }
