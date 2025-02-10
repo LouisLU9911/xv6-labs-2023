@@ -507,11 +507,40 @@ sys_pipe(void)
 uint64
 sys_mmap(void)
 {
+  // void *mmap(void *addr, size_t len, int prot, int flags,
+  //            int fd, off_t offset);
+  // Arguments
+  uint64 addr;
+  int len, prot, flag, fd;
+  off_t offset;
+  // addr: 0
+  argaddr(0, &addr);
+  // len: the number of bytes to map
+  argint(1, &len);
+  // prot: PROT_READ or PROT_WRITE or both
+  argint(2, &prot);
+  // flag: MAP_SHARED or MAP_PRIVATE
+  argint(3, &flag);
+  // fd: the open file descriptor of the file to map
+  struct file *f;
+  if(argfd(4, &fd, &f) < 0)
+    return -1;
+  // offset: 0
+  argaddr(0, (uint64*)&offset);
+
+
   return ~0;
 }
 
 uint64
 sys_munmap(void)
 {
+  // int munmap(void *addr, size_t len);
+  // Arguments
+  uint64 addr;
+  argaddr(0, &addr);
+  int len;
+  argint(1, &len);
+
   return ~0;
 }
